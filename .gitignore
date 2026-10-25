@@ -1,0 +1,44 @@
+# Build output and machine-local configuration
+.gradle/
+.kotlin/
+**/build/
+**/.cxx/
+**/.externalNativeBuild/
+local.properties
+.idea/
+*.iml
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Local device evidence, binaries and reference checkouts stay on this machine.
+/artifacts/
+/references/
+/signing/
+*.apk
+*.aab
+*.apks
+*.zip
+*.7z
+*.log
+*.hprof
+*.pcap
+*.pcapng
+*.har
+
+# Credentials and agent-local state
+.env
+.env.*
+!.env.example
+*.jks
+*.keystore
+*.p12
+*.pfx
+*.key
+keystore.properties
+signing.properties
+.codex/
+.agents/
+.aws/
+__pycache__/
+*.pyc

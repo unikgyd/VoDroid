@@ -1,0 +1,31 @@
+name: 问题反馈
+description: 提供可复现、已脱敏的问题信息
+body:
+  - type: markdown
+    attributes:
+      value: 请勿上传卡片身份、电话号码、短信、激活码、确认码或鉴权材料。安全问题请参阅 SECURITY.md。
+  - type: input
+    id: version
+    attributes:
+      label: 应用版本
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: 设备与环境
+      description: 手机、Android / ROM、运营商、卡片类型、卡片通道、隧道模式，以及是否启用可选增强。
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: 复现步骤与预期结果
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: 必要的脱敏日志
+      description: 只贴相关阶段的片段，先删除用户数据和所有鉴权材料。
+      render: text

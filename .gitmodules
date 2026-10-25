@@ -1,0 +1,6 @@
+[submodule "libeuicc"]
+	path = lpac/src/main/jni/lpac
+	url = https://github.com/estkme-group/lpac.git
+[submodule "cjson"]
+	path = lpac/src/main/jni/cjson/cjson
+	url = https://github.com/DaveGamble/cJSON.git

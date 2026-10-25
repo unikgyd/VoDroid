@@ -1,0 +1,6 @@
+<permissions><privapp-permissions package="io.vodroid">
+    <permission name="android.permission.MODIFY_PHONE_STATE" />
+    <permission name="android.permission.READ_PRIVILEGED_PHONE_STATE" />
+    <permission name="android.permission.WRITE_EMBEDDED_SUBSCRIPTIONS" />
+    <permission name="android.permission.SECURE_ELEMENT_PRIVILEGED_OPERATION" />
+</privapp-permissions></permissions>

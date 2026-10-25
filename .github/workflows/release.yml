@@ -1,0 +1,58 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing version tag, for example v0.4.6
+        type: string
+        required: true
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    env:
+      RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+          fetch-depth: 0
+          submodules: true
+          persist-credentials: false
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+      - name: Validate tag and publication files
+        run: |
+          python3 scripts/check_repo.py
+          python3 -c 'import sys; sys.path.insert(0,"scripts"); from project import release_version; import os; print(release_version(os.environ["RELEASE_TAG"]))'
+          test "$(git rev-parse HEAD)" = "$(git rev-parse --verify "refs/tags/$RELEASE_TAG^{commit}")"
+      - name: Install Android SDK components
+        run: sdkmanager 'platforms;android-35' 'build-tools;35.0.0' 'ndk;28.2.13676358'
+      - name: Build signed APK, module and corresponding source
+        env:
+          VODROID_KEYSTORE_BASE64: ${{ secrets.VODROID_KEYSTORE_BASE64 }}
+          VODROID_STORE_PASSWORD: ${{ secrets.VODROID_STORE_PASSWORD }}
+          VODROID_KEY_ALIAS: ${{ secrets.VODROID_KEY_ALIAS }}
+          VODROID_KEY_PASSWORD: ${{ secrets.VODROID_KEY_PASSWORD }}
+        run: python3 scripts/release.py --tag "$RELEASE_TAG"
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          flags=()
+          [[ "$RELEASE_TAG" == *-* ]] && flags+=(--prerelease)
+          gh release create "$RELEASE_TAG" artifacts/release/* --verify-tag --title "VoDroid $RELEASE_TAG" --generate-notes "${flags[@]}"

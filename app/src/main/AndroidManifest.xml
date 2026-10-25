@@ -1,0 +1,49 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" xmlns:tools="http://schemas.android.com/tools">
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.VIBRATE" />
+    <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
+    <uses-permission android:name="android.permission.MANAGE_OWN_CALLS" />
+    <uses-permission android:name="android.permission.READ_PHONE_STATE" />
+    <!-- Granted only when the user installs the optional priv-app module. -->
+    <uses-permission android:name="android.permission.MODIFY_PHONE_STATE" tools:ignore="ProtectedPermissions" />
+    <uses-permission android:name="android.permission.READ_PRIVILEGED_PHONE_STATE" tools:ignore="ProtectedPermissions" />
+    <uses-permission android:name="android.permission.WRITE_EMBEDDED_SUBSCRIPTIONS" tools:ignore="ProtectedPermissions" />
+    <uses-permission android:name="android.permission.SECURE_ELEMENT_PRIVILEGED_OPERATION" tools:ignore="ProtectedPermissions" />
+    <uses-feature android:name="android.hardware.usb.host" android:required="false" />
+    <uses-feature android:name="android.hardware.telephony" android:required="false" />
+    <uses-feature android:name="android.hardware.microphone" android:required="false" />
+    <application android:name=".VoDroidApp" android:allowBackup="false" android:forceQueryable="true" android:label="VoDroid" android:theme="@style/AppTheme" android:supportsRtl="true" android:usesCleartextTraffic="false" android:icon="@drawable/ic_vodroid">
+        <meta-data android:name="xposedmodule" android:value="true" />
+        <meta-data android:name="xposeddescription" android:value="eSIM app compatibility and installation handoff; optional phone integration" />
+        <meta-data android:name="xposedminversion" android:value="82" />
+        <meta-data android:name="xposedscope" android:resource="@array/xposed_scope" />
+        <provider android:name=".IntegrationConfigProvider" android:authorities="io.vodroid.integration" android:exported="true" android:grantUriPermissions="false" />
+        <activity android:name=".MainActivity" android:exported="true">
+            <intent-filter><action android:name="android.intent.action.MAIN" /><category android:name="android.intent.category.LAUNCHER" /></intent-filter>
+        </activity>
+        <activity android:name=".IncomingCallActivity" android:exported="false" android:showWhenLocked="true" android:turnScreenOn="true" android:excludeFromRecents="true" />
+        <activity android:name=".EsimImportActivity" android:exported="true" android:excludeFromRecents="true" android:label="安装 eSIM">
+            <!-- Both spellings are intentional: Android scheme matching is case-sensitive. -->
+            <intent-filter><action android:name="android.intent.action.VIEW" /><category android:name="android.intent.category.DEFAULT" /><category android:name="android.intent.category.BROWSABLE" /><data android:scheme="lpa" /><data android:scheme="LPA" tools:ignore="AppLinkUrlError" /></intent-filter>
+            <intent-filter><action android:name="android.intent.action.SEND" /><category android:name="android.intent.category.DEFAULT" /><data android:mimeType="text/plain" /></intent-filter>
+            <intent-filter><action android:name="android.intent.action.VIEW" /><category android:name="android.intent.category.DEFAULT" /><category android:name="android.intent.category.BROWSABLE" /><data android:scheme="https" /><data android:host="esimsetup.android.com" /><data android:host="esimsetup.apple.com" /><data android:path="/esim_qrcode_provisioning" /></intent-filter>
+        </activity>
+        <service android:name=".VoWifiService" android:exported="false" android:foregroundServiceType="specialUse|microphone">
+            <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE" android:value="User initiated WiFi calling and SMS over IMS with external SIM authentication" />
+        </service>
+        <service android:name=".TunnelVpnService" android:permission="android.permission.BIND_VPN_SERVICE" android:exported="false" android:foregroundServiceType="specialUse">
+            <intent-filter><action android:name="android.net.VpnService" /></intent-filter>
+            <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE" android:value="Optional user selected IMS tunnel networking" />
+        </service>
+        <service android:name=".CallIntegrationService" android:permission="android.permission.BIND_TELECOM_CONNECTION_SERVICE" android:exported="true"><intent-filter><action android:name="android.telecom.ConnectionService" /></intent-filter></service>
+        <service android:name=".SystemEuiccService" android:enabled="false" android:exported="true" android:permission="android.permission.BIND_EUICC_SERVICE"><intent-filter android:priority="100"><action android:name="android.service.euicc.EuiccService" /></intent-filter></service>
+        <service android:name=".RootSmsBridgeService" android:exported="true" android:permission="android.permission.MODIFY_PHONE_STATE" />
+    </application>
+</manifest>

@@ -1,0 +1,6 @@
+id=vodroid
+name=VoDroid System Integration
+version=0.4.6-dev
+versionCode=17
+author=unikgyd
+description=Optional privileged LPA, eSIM feature declaration and scoped integration for Android 13+
