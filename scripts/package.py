@@ -7,7 +7,7 @@ import shutil
 import subprocess
 import zipfile
 from pathlib import Path
-from project import ROOT, NATIVE, REPOSITORY, git, sdk_tool, version
+from project import ROOT, DIST, NATIVE, REPOSITORY, git, sdk_tool, version
 
 
 def source_files():
@@ -19,7 +19,7 @@ def source_files():
         name = raw_path.decode("utf-8")
         if stage != "0":
             raise RuntimeError("Resolve Git conflicts before packaging")
-        if name.split("/", 1)[0] in {"artifacts", "references", "signing", ".git", ".codex", ".agents"}:
+        if name.split("/", 1)[0] in {"artifacts", "dist", "references", "signing", ".git", ".codex", ".agents"}:
             raise RuntimeError("Local/private directory is still in the index: " + name)
         if mode == "160000":
             if NATIVE.get(name) != commit or git("rev-parse", "HEAD", cwd=ROOT / name).decode().strip() != commit:
@@ -34,6 +34,24 @@ def source_files():
             yield name, ROOT / name
 
 
+def previous_products(output):
+    """Identify only unchanged generated APK/ZIP files from our previous checksum list."""
+    checksums = output / "SHA256SUMS"
+    if not checksums.is_file():
+        return {}
+    products = {}
+    for line in checksums.read_text(encoding="ascii").splitlines():
+        match = re.fullmatch(r"([0-9a-f]{64})  (vodroid[0-9A-Za-z.-]*\.(?:apk|zip))", line)
+        if match:
+            digest, name = match.groups()
+            path = output / name
+            if path.resolve().parent != output:
+                raise RuntimeError("Previous output resolves outside package folder: " + name)
+            if path.is_file() and hashlib.sha256(path.read_bytes()).hexdigest() == digest:
+                products[name] = digest
+    return products
+
+
 def package(variant="debug", name=None, output=None, include_source=False):
     if include_source:
         from check_repo import main as check_publication
@@ -42,8 +60,9 @@ def package(variant="debug", name=None, output=None, include_source=False):
     name = name or configured_name
     if not re.fullmatch(r"[0-9A-Za-z.-]+", name):
         raise ValueError("Invalid package version")
-    output = Path(output or ROOT / "artifacts").resolve()
+    output = Path(output or DIST).resolve()
     output.mkdir(parents=True, exist_ok=True)
+    previous = previous_products(output)
     apk = ROOT / "app/build/outputs/apk" / variant / f"app-{variant}.apk"
     if not apk.is_file():
         raise RuntimeError("Build the APK before packaging")
@@ -56,7 +75,7 @@ def package(variant="debug", name=None, output=None, include_source=False):
         raise RuntimeError("APK targetSdk does not match build metadata")
     with zipfile.ZipFile(apk) as archive:
         abis = {entry.split("/")[1] for entry in archive.namelist() if entry.startswith("lib/") and entry.endswith(".so")}
-        if abis != {"arm64-v8a", "x86_64"}:
+        if abis != {"arm64-v8a"}:
             raise RuntimeError("APK native ABIs do not match build metadata")
     signature = subprocess.check_output([sdk_tool("apksigner"), "verify", "--verbose", "--print-certs", str(apk)], text=True)
     certificate = re.search(r"Signer #1 certificate SHA-256 digest: (\w+)", signature)
@@ -89,11 +108,13 @@ def package(variant="debug", name=None, output=None, include_source=False):
                 archive.writestr(entry, path.read_bytes())
         products.append(source)
     commit = subprocess.run(["git", "rev-parse", "HEAD"], cwd=ROOT, capture_output=True, text=True)
+    status = subprocess.run(["git", "status", "--porcelain"], cwd=ROOT, capture_output=True, text=True)
     info = output / "BUILD_INFO.json"
     info.write_text(json.dumps({"repository": REPOSITORY, "versionName": name, "versionCode": code, "variant": variant,
         "commit": commit.stdout.strip() if commit.returncode == 0 else "uncommitted-initial-tree",
+        "sourceDirty": bool(status.stdout.strip()) if status.returncode == 0 else None,
         "certificateSha256": certificate.group(1), "minSdk": 33, "targetSdk": 35,
-        "abis": ["arm64-v8a", "x86_64"], "nativeDependencies": NATIVE}, indent=2) + "\n", encoding="utf-8")
+        "abis": ["arm64-v8a"], "nativeDependencies": NATIVE}, indent=2) + "\n", encoding="utf-8")
     products.append(info)
     sums = []
     for path in products:
@@ -102,7 +123,13 @@ def package(variant="debug", name=None, output=None, include_source=False):
     with zipfile.ZipFile(module) as archive:
         if archive.read("system/priv-app/VoDroid/VoDroid.apk") != target_apk.read_bytes():
             raise RuntimeError("Module APK does not match standalone APK")
+    current_names = {path.name for path in products}
+    for name, digest in previous.items():
+        path = output / name
+        if name not in current_names and path.is_file() and path.resolve().parent == output and hashlib.sha256(path.read_bytes()).hexdigest() == digest:
+            path.unlink()
     print("Packaged and verified " + ", ".join(path.name for path in products))
+    print("Output folder: " + str(output))
     return output
 
 

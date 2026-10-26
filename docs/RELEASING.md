@@ -1,86 +1,71 @@
-# 发布指南
+# 本地编译与手动发布
 
-本仓库默认分支为 `main`。本地准备、上传源码与公开发布是三个独立步骤。
+公开版本在本机编译、签名后，手动上传到 [GitHub Releases](https://github.com/unikgyd/VoDroid/releases)。所有 APK 和本地库仅支持 **arm64-v8a**。CI 保留构建与检查，不创建 Release，也不使用发布密钥。
 
-## 1. 生成并备份固定签名
+## 1. 准备环境与固定签名
 
-使用 JDK 17：
+安装 JDK 17、Android SDK 35、Build Tools 35.0.0、NDK 28.2.13676358 和 Python 3.10+，设置 `JAVA_HOME`、`ANDROID_HOME`。依赖配置见 [开发指南](DEVELOPMENT.md)。
+
+首次生成签名：
 
 ```sh
 python scripts/signing.py init
 ```
 
-只在首次执行。脚本生成 RSA-4096 PKCS#12 密钥及随机密码，存放于被忽略的 `signing/release.p12`、`signing/credentials.json`，不会覆盖已有密钥，也不会打印密码。**加密备份整个 `signing/` 目录到仓库之外**；它是后续 APK 覆盖更新所需的身份。不要将密钥、密码或 Base64 密钥放入 Git、Issue 或聊天记录。
+已有 `signing/release.p12` 和 `signing/credentials.json` 时直接使用，不需要重新生成。脚本不会覆盖已有密钥，也不会打印密码。**加密备份整个 `signing/` 目录到仓库之外**；后续版本必须使用同一密钥才能覆盖更新。该目录被 Git 忽略，只留在本地，无需配置 GitHub 签名 Secrets。
 
-调试 APK 使用调试签名，正式 APK 使用此固定签名。首次从调试版迁移到正式版可能需要卸载重装，会清除应用私有数据；先自行保存需要的设置和记录。之后正式版一直使用同一密钥。
+调试 APK 与正式 APK 签名不同。从调试版迁移到正式版可能需要卸载重装，会清除应用私有数据；先自行保存需要的设置和记录。
 
-## 2. 一次性配置 GitHub Actions Secrets
+## 2. 编译与打包
 
-安装 [GitHub CLI](https://cli.github.com)，并使用有本仓库管理权限的账号登录：
+更新根目录 `version.properties`，每次公开更新增加 `versionCode`，并维护 [CHANGELOG.md](../CHANGELOG.md)。例如开发版本 `0.4.6-dev` 对应正式版本 `0.4.6`。
 
-```sh
-gh auth login
-python scripts/signing.py upload
-```
-
-上传脚本通过标准输入导入以下四个仓库 Actions Secrets，不输出密钥值：
-
-| Secret | 内容 |
-| --- | --- |
-| `VODROID_KEYSTORE_BASE64` | `release.p12` 的 Base64 |
-| `VODROID_STORE_PASSWORD` | 密钥库密码 |
-| `VODROID_KEY_ALIAS` | 签名别名 |
-| `VODROID_KEY_PASSWORD` | 私钥密码 |
-
-也可以在仓库 **Settings → Secrets and variables → Actions** 配置同名项。仅写入 Secrets，不能写入公开 Variables。没有这些值时，Release 工作流会停止；普通 CI 构建无需这些值。
-
-Actions 使用工作流自带的 `GITHUB_TOKEN` 创建 Release，不需要另设发布 PAT。PR 的 Build 工作流只有仓库读取权限，不使用发布密钥；首次公开前可在 GitHub 设置中确认 Actions 允许执行本仓库工作流。
-
-## 3. 本地预检
-
-更新 `version.properties`，递增 `versionCode`，并维护 [CHANGELOG.md](../CHANGELOG.md)。例如当前开发版本 `0.4.6-dev`，正式标签为 `v0.4.6`。
+检查并提交待发布源码：
 
 ```sh
 git add .
 python scripts/check_repo.py
 git diff --cached --check
-python scripts/release.py --tag v0.4.6
-```
-
-已缓存依赖时可给 `release.py` 加 `--offline`。该命令只在本机构建，不上传、不打标签。它执行核心测试、Release 构建、Lint、签名及产物一致性检查，输出：
-
-| 文件 | 用途 |
-| --- | --- |
-| `vodroid-0.4.6.apk` | 可直接安装的正式签名 APK |
-| `vodroid-magisk-0.4.6.zip` | 包含同一 APK 的可选 Magisk 模块 |
-| `vodroid-0.4.6-source.zip` | 含固定原生依赖的对应源码，可独立构建 |
-| `BUILD_INFO.json` | 版本、提交、SDK / ABI、证书 SHA-256 与依赖版本 |
-| `SHA256SUMS` | 上述文件的 SHA-256 |
-
-完整源码包从 Git 暂存清单收集当前源码，并展开两个固定子模块；先暂存所有待发布文件。正式发布时应保持工作区干净，使源码、提交与构建产物一致。GitHub 自动生成的 Source code ZIP 不含子模块，不能替代该源码包。
-
-可用 `apksigner verify --verbose --print-certs` 验证 APK 签名。比较证书指纹以确认后续更新持续使用同一发布密钥。
-
-## 4. 上传源码与标签
-
-人工检查暂存内容后首次提交：
-
-```sh
-git commit -m "Prepare VoDroid for public release"
+git diff --cached --stat
+git commit -m "Prepare 0.4.6 release"
 git push -u origin main
 ```
 
-等待 **Build** 工作流通过，再发布版本：
+已有对应提交时无需重复提交。确认工作区没有待发布的遗漏修改，再编译正式包：
 
 ```sh
-git tag -a v0.4.6 -m "VoDroid 0.4.6"
-git push origin v0.4.6
+python scripts/release.py --version 0.4.6
 ```
 
-**Release** 工作流会重新检查版本、构建并签名，发布 APK、模块、完整源码、构建信息与校验和。`v0.4.6-rc.1` 等含 `-` 的标签自动标为预发布。
+`--version` 的基础版本应与 `version.properties` 一致。已缓存依赖时可以加 `--offline`。该命令运行核心测试、ARM64 Release 构建、Lint、APK 签名验证与打包检查，所有成品统一输出到根目录 **`dist/`**：
 
-手动运行 Release 仅支持已存在的版本标签，适合首次失败后重跑；若同名 Release 已存在，创建步骤会拒绝覆盖，需先核对已有产物。不要移动已经公开发布的版本标签。
+| 文件 | 用途 |
+| --- | --- |
+| `vodroid-0.4.6.apk` | Android 13+、arm64-v8a 的正式签名主应用，同时包含 LSPosed 模块 |
+| `vodroid-magisk-0.4.6.zip` | 包含同一 APK 的可选 Magisk 模块 |
+| `vodroid-0.4.6-source.zip` | 含固定原生依赖的对应源码 |
+| `BUILD_INFO.json` | 版本、提交、`sourceDirty`、ABI、证书 SHA-256 与依赖版本 |
+| `SHA256SUMS` | 上述文件的 SHA-256 |
 
-## 5. 发布后核对
+LSPosed 使用同一份 `vodroid-0.4.6.apk`：安装后在 LSPosed 中启用「VoDroid」并选择作用域。Magisk 系统集成使用对应 ZIP。两者无需额外生成或安装第二个插件 APK。
 
-从 Release 下载产物，比对 `SHA256SUMS`、APK 版本与证书指纹，确认模块内 APK 与独立 APK 一致。安装后检查作者 / 仓库入口和基本导航，再按 [兼容性记录](COMPATIBILITY.md) 验证设备功能。更新 README 中的实测范围时只记录实际验证结果。
+调试构建也使用 `dist/`。再次打包时会清理校验和中记录且未修改的旧成品，目录中的主应用、模块和构建信息保持对应；自行放入的其他文件不作清理。
+
+源码包根据 Git 跟踪清单收集当前源码，并展开两个固定子模块。新增和删除的文件应先通过 `git add` 更新清单。上传前检查 `BUILD_INFO.json`：`abis` 应为 `["arm64-v8a"]`，`sourceDirty` 应为 `false`，`commit` 应对应本次发布的源码提交。若编译后又修改源码或文档，应提交修改并重新打包。
+
+## 3. 手动上传
+
+1. 确认对应源码已推送到 `main`，CI 检查通过。
+2. 核对 `dist/` 内的打包结果、版本、提交与签名指纹。
+3. 打开仓库 **Releases → Draft a new release**，创建对应标签，例如 `v0.4.6`，选择本次源码提交。
+4. 填写更新说明，将上述五个文件拖入附件区。测试版本可勾选预发布，确认后手动发布。
+
+无需 GitHub CLI 或签名 Secrets，推送版本标签也不会自动创建 Release。GitHub 自动附带的 Source code ZIP 不含子模块，应同时上传本地生成的完整源码包。
+
+## 4. 核对与后续更新
+
+下载 Release 附件，比对 `SHA256SUMS`、APK 版本与证书指纹，确认模块内 APK 与独立 APK 一致。打包脚本会拒绝混入其他 ABI，并在写入模块后再次比对 APK 字节。
+
+需要独立检查时，可使用 Android Build Tools 中的 `apksigner verify --verbose --print-certs` 验证 APK，并通过 `BUILD_INFO.json` 对照证书 SHA-256。后续正式版的证书指纹应保持一致。
+
+下次发布递增版本、继续使用原有签名密钥，重复本地编译与手动上传流程。真实功能验证范围见 [兼容性说明](COMPATIBILITY.md)。

@@ -35,13 +35,7 @@ jobs:
       - name: Test and build
         run: ./gradlew --no-daemon :core:test :app:assembleDebug :app:lintDebug
       - name: Verify and package
-        run: python3 scripts/package.py --variant debug --out artifacts/ci
-      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        with:
-          name: vodroid-debug-${{ github.sha }}
-          path: artifacts/ci/
-          if-no-files-found: error
-          retention-days: 14
+        run: python3 scripts/package.py --variant debug
       - name: Upload test and lint reports
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2

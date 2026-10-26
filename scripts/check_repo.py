@@ -22,7 +22,7 @@ def main():
         mode, commit, stage = metadata.decode().split()
         name = raw_path.decode("utf-8")
         parts = name.split("/")
-        if stage != "0" or parts[0] in {"artifacts", "references", "signing", ".gradle", ".kotlin", ".codex", ".agents", ".aws"} or "build" in parts:
+        if stage != "0" or parts[0] in {"artifacts", "dist", "references", "signing", ".gradle", ".kotlin", ".codex", ".agents", ".aws"} or "build" in parts:
             raise RuntimeError("Local or unresolved file in index: " + name)
         if name.endswith((".apk", ".aab", ".zip", ".jks", ".keystore", ".p12", ".pfx", ".key", ".pcap", ".pcapng", ".log")) or parts[-1] in {"local.properties", "credentials.json", ".env", "signing.properties"}:
             raise RuntimeError("Private/generated file in index: " + name)

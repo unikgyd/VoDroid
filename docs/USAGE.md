@@ -1,5 +1,13 @@
 # 使用说明
 
+## 安装与更新
+
+需要 Android 13+、arm64-v8a 设备。从 [GitHub Releases](https://github.com/unikgyd/VoDroid/releases) 下载 `vodroid-<版本>.apk` 安装即可。主应用默认使用 OMAPI，Root 与模块按需配置。
+
+已使用可选 Magisk 模块时，更新同版本的 `vodroid-magisk-<版本>.zip` 并重启。正式版后续更新应沿用相同签名；调试版与正式版签名不同，迁移前先保存需要的设置与记录。
+
+自行编译时，可安装成品统一位于根目录 `dist/`。VoDroid APK 本身包含 LSPosed 模块；安装主应用后在 LSPosed 中启用「VoDroid」即可，Magisk 系统集成则安装同目录中的 ZIP。
+
 ## 卡片通道
 
 默认使用 OMAPI 访问插在手机内的卡片。在「设置 → SIM 与 eSIM → 卡片通道」检测 Reader；Reader 名称、物理卡槽和当前订阅不是固定的一一对应关系，应以实际检测为准。USB CCID 适用于外接读卡器，需要授予 USB 设备权限。

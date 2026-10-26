@@ -1,21 +1,19 @@
-"""Create a persistent local signing key or upload it through an authenticated gh CLI."""
+"""Create a persistent local signing key for manually published APKs."""
 import argparse
-import base64
 import json
 import os
 import secrets
 import shutil
 import subprocess
 from pathlib import Path
-from project import ROOT, REPOSITORY
+from project import ROOT
 
 DIRECTORY = ROOT / "signing"
 CREDENTIALS = DIRECTORY / "credentials.json"
-SECRET_NAMES = ("VODROID_KEYSTORE_BASE64", "VODROID_STORE_PASSWORD", "VODROID_KEY_ALIAS", "VODROID_KEY_PASSWORD")
 
 
 def local_values():
-    if not CREDENTIALS.is_file():
+    if not CREDENTIALS.is_file() or not (DIRECTORY / "release.p12").is_file():
         raise RuntimeError("Signing key missing. Run: python scripts/signing.py init")
     data = json.loads(CREDENTIALS.read_text(encoding="utf-8"))
     return {"VODROID_KEYSTORE_FILE": str(DIRECTORY / "release.p12"), "VODROID_STORE_PASSWORD": data["storePassword"],
@@ -41,24 +39,11 @@ def init():
     print("Signing key created in ignored signing/. Back up this folder; credentials were not printed.")
 
 
-def upload():
-    gh = shutil.which("gh")
-    if not gh:
-        raise RuntimeError("Install GitHub CLI and run gh auth login, then retry this command")
-    values = local_values()
-    subprocess.run([gh, "auth", "status"], check=True)
-    payloads = {"VODROID_KEYSTORE_BASE64": base64.b64encode(Path(values["VODROID_KEYSTORE_FILE"]).read_bytes()).decode(),
-                **{key: values[key] for key in SECRET_NAMES[1:]}}
-    for key, value in payloads.items():
-        subprocess.run([gh, "secret", "set", key, "--repo", REPOSITORY], input=value, text=True, check=True)
-    print("Four signing secrets configured for " + REPOSITORY)
-
-
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("command", choices=("init", "upload"))
+    parser.add_argument("command", choices=("init",))
     args = parser.parse_args()
     try:
-        init() if args.command == "init" else upload()
+        init()
     except (RuntimeError, subprocess.CalledProcessError) as error:
         raise SystemExit(str(error))

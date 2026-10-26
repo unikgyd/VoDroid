@@ -9,3 +9,5 @@
 协议修改应附针对行为的测试及 RFC / 上游出处。保持可选 Root 功能与标准路径分离，不把具体卡槽或运营商写死。文档应区分单元测试、本地模拟和真实运营商互通。
 
 提交前运行核心测试、相关 Android 构建 / Lint、`python scripts/check_repo.py` 和 `git diff --cached --check`。版本发布由维护者按 [发布指南](docs/RELEASING.md) 执行。
+
+当前 APK 仅支持 arm64-v8a，Android 检查需使用 ARM64 设备或模拟器。CI 运行构建检查，正式版本由维护者使用本地签名编译并手动上传。界面截图需先脱敏，再保存到 `docs/images/`。

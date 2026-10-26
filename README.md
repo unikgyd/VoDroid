@@ -3,13 +3,16 @@
 [![Build](https://github.com/unikgyd/VoDroid/actions/workflows/ci.yml/badge.svg)](https://github.com/unikgyd/VoDroid/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/unikgyd/VoDroid?include_prereleases)](https://github.com/unikgyd/VoDroid/releases)
 ![Android 13+](https://img.shields.io/badge/Android-13%2B-3DDC84)
+![arm64-v8a](https://img.shields.io/badge/ABI-arm64--v8a-blue)
 [![GPL-3.0](https://img.shields.io/badge/license-GPL--3.0-blue)](LICENSE)
 
-**可插拔 eSIM 管理与软件 VoWiFi 客户端。** Android 13 及以上，支持 arm64-v8a / x86_64。由 [unikgyd](https://github.com/unikgyd) 开发。
+**可插拔 eSIM 管理与软件 VoWiFi 客户端。** Android 13 及以上，仅支持 arm64-v8a。由 [unikgyd](https://github.com/unikgyd) 开发。
 
 通过手机卡槽的 **OMAPI** 访问 SIM / 可插拔 eUICC，在应用内完成 ePDG、IKEv2、SIM 鉴权与 IMS 通信。兼容 USB CCID；Root、Magisk 和 LSPosed 作为独立的可选增强。
 
 当前为持续开发版本。DITO 实机已验证鉴权、IMS 注册、SA 换钥和短信接收；更多运营商、真实双向通话与配置下载仍需验证。详细范围见 [兼容性与验证状态](docs/COMPATIBILITY.md)。
+
+[使用说明](docs/USAGE.md) · [开发构建](docs/DEVELOPMENT.md) · [手动发布](docs/RELEASING.md) · [更新记录](CHANGELOG.md)
 
 | 状态 | 拨号 | 短信 | 关于 |
 | --- | --- | --- | --- |
@@ -29,7 +32,17 @@
 
 ## 下载与开始使用
 
-从 [GitHub Releases](https://github.com/unikgyd/VoDroid/releases) 下载 APK。普通使用只安装 APK；`vodroid-magisk-*.zip` 是需要重启的可选系统模块。
+从 [GitHub Releases](https://github.com/unikgyd/VoDroid/releases) 下载适用于 Android 13+、arm64-v8a 的正式包。版本由作者本地编译并手动上传。
+
+| 文件 | 选择方式 |
+| --- | --- |
+| `vodroid-<版本>.apk` | 主应用，普通使用安装此文件即可 |
+| `vodroid-magisk-<版本>.zip` | 可选系统模块，通过 Magisk 安装后重启，与主应用保持同版本 |
+| `vodroid-<版本>-source.zip` | 包含固定原生依赖的源码，供开发与复现构建 |
+
+主应用 APK 同时包含 LSPosed 模块。在 LSPosed 中启用「VoDroid」并选择作用域即可，无需另外安装一份 LSPosed 插件 APK。
+
+首次安装不需要 Root。需要特权读卡或系统集成时，再单独启用可选增强。
 
 1. 插入 SIM / 可插拔 eUICC，打开「设置 → SIM 与 eSIM → 卡片通道」。默认使用 OMAPI，检测并选择实际 Reader。
 2. 通过「检测卡片」确认 USIM 和 eSIM 管理通道。普通 SIM 可能支持鉴权，但不支持配置下载；OMAPI 仍受系统与卡片访问规则约束。
@@ -72,15 +85,36 @@ Linux / macOS：
 python3 scripts/package.py --variant debug
 ```
 
-输出位于 `artifacts/`：调试 APK、配套 Magisk 模块、构建信息和 SHA-256 校验文件。已克隆但未拉取依赖时执行 `git submodule update --init --recursive`。更多环境及测试说明见 [开发指南](docs/DEVELOPMENT.md)。
+所有可安装成品统一输出到根目录 **`dist/`**：`vodroid-debug.apk`、`vodroid-magisk.zip`、构建信息和 SHA-256 校验文件；调试版同样只包含 arm64-v8a。已克隆但未拉取依赖时执行 `git submodule update --init --recursive`。更多环境及测试说明见 [开发指南](docs/DEVELOPMENT.md)。
 
-## 自动构建与发布
+## 本地构建与手动发布
 
-- 提交到 `main` 或发起 PR：运行协议测试、APK 构建、Lint 和打包校验，上传调试产物及报告。
-- 推送 `v*` 版本标签：使用固定发布签名构建，自动发布 **APK、Magisk 模块、包含原生依赖的完整源码包、构建信息和校验和**。
-- 含 `-` 的标签会标记为预发布；缺少签名或版本不匹配时停止发布。
+提交到 `main` 或发起 PR 时，CI 执行协议测试、ARM64 APK 构建、Lint 和打包检查，并保留检查报告。正式版本使用本地固定签名，在本机编译后手动上传到 GitHub Releases；推送标签不会自动发布。
 
-首次发布需配置四项仓库签名 Secrets。密钥生成、导入及标签发布步骤见 [发布指南](docs/RELEASING.md)。调试版与正式版签名不同，不能直接覆盖安装。
+首次构建正式版先生成签名；已有 `signing/` 密钥时直接使用：
+
+```sh
+python scripts/signing.py init
+```
+
+提交待发布源码后运行：
+
+```sh
+python scripts/release.py --version 0.4.6
+```
+
+正式版成品也统一放在 `dist/`：
+
+```text
+dist/
+  vodroid-0.4.6.apk              主应用 + LSPosed 模块
+  vodroid-magisk-0.4.6.zip       Magisk 系统集成模块
+  vodroid-0.4.6-source.zip       完整源码
+  BUILD_INFO.json               构建信息
+  SHA256SUMS                   文件校验和
+```
+
+将上述五个文件手动附加到 Release。无需 GitHub 签名 Secrets。完整步骤见 [手动发布指南](docs/RELEASING.md)。请备份本地签名密钥；调试版与正式版签名不同，不能直接覆盖安装。
 
 ## 项目结构
 
@@ -92,9 +126,10 @@ python3 scripts/package.py --variant debug
 | `hidden-api/`、`hook-api/` | 仅供编译的 Android / Xposed 类型声明 |
 | `magisk/` | 可选系统模块模板 |
 | `diagnostics/hook-probe/` | 独立的 eSIM 兼容诊断应用，不包含在主 APK 内 |
-| `scripts/`、`.github/` | 本地构建、签名、打包及自动发布 |
+| `scripts/`、`.github/` | 本地构建、签名、打包和 CI 检查 |
+| `dist/` | 构建生成的统一成品目录，已被 Git 忽略 |
 
-设备日志、截图、安装包、参考仓库、本机设置和签名密钥留在本地，不纳入版本控制。
+实机调试资料、原始截图、安装包、参考仓库、本机设置和签名密钥留在本地，不纳入版本控制。文档展示截图位于 `docs/images/`，已检查不含真实卡片与消息数据。
 
 ## 反馈与隐私
 

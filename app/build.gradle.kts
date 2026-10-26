@@ -15,7 +15,7 @@ android {
     namespace = "io.vodroid"
     compileSdk = 35
     buildToolsVersion = "35.0.0"
-    defaultConfig { applicationId = "io.vodroid"; minSdk = 33; targetSdk = 35; versionCode = appVersionCode; versionName = appVersionName; testInstrumentationRunner = "io.vodroid.SmokeInstrumentation"; ndk { abiFilters += listOf("arm64-v8a", "x86_64") } }
+    defaultConfig { applicationId = "io.vodroid"; minSdk = 33; targetSdk = 35; versionCode = appVersionCode; versionName = appVersionName; testInstrumentationRunner = "io.vodroid.SmokeInstrumentation"; ndk { abiFilters += "arm64-v8a" } }
     compileOptions { sourceCompatibility = JavaVersion.VERSION_17; targetCompatibility = JavaVersion.VERSION_17 }
     kotlinOptions { jvmTarget = "17" }
     signingConfigs { if(hasReleaseSigning)create("publication") { storeFile=file(signingFile!!);storePassword=signingStorePassword;keyAlias=signingAlias;keyPassword=signingKeyPassword;storeType="PKCS12" } }

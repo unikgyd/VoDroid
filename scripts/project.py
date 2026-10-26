@@ -5,6 +5,7 @@ import re
 import subprocess
 
 ROOT = Path(__file__).resolve().parents[1]
+DIST = ROOT / "dist"
 NATIVE = {
     "lpac/src/main/jni/lpac": "50cdf15ab40942b00f8819a1c2ca19997f1a6d34",
     "lpac/src/main/jni/cjson/cjson": "6d9f2443ab071f86e5d9b43025a40929ec41c46c",
